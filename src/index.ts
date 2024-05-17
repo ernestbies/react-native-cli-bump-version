@@ -335,13 +335,13 @@ class ProjectFilesManager {
 
     saveVersionFile(versionFile: string) {
         const info = {
-            ios: {
-                versionName: this.pbx.getCurrentMarketingVersion(),
-                versionCode: this.pbx.getCurrentProjectVersion(),
-            },
             android: {
                 versionName: this.buildGradle.getVersionName(),
                 versionCode: this.buildGradle.getVersionCode(),
+            },
+            ios: {
+                versionName: this.pbx.getCurrentMarketingVersion(),
+                versionCode: this.pbx.getCurrentProjectVersion(),
             },
         };
 
