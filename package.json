@@ -1,6 +1,6 @@
 {
     "name": "@ernestbies/react-native-cli-bump-version",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "main": "src/index.ts",
     "types": "lib/index.d.ts",
     "license": "MIT",
