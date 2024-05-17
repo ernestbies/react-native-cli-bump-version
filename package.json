@@ -1,20 +1,20 @@
 {
-  "name": "react-native-cli-bump-version",
-  "version": "1.5.0",
-  "main": "src/index.ts",
-  "types": "lib/index.d.ts",
-  "license": "MIT",
-  "scripts": {
-    "fmt": "dprint fmt",
-    "test": "yarn build && jest",
-    "build": "tsc",
-    "prepare": "rm -rf ./lib/* && yarn test"
-  },
-  "devDependencies": {
-    "@types/node": "^17.0.14",
-    "dprint": "^0.22.0",
-    "jest": "^27.4.7",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.5.5"
-  }
+    "name": "@ernestbies/react-native-cli-bump-version",
+    "version": "1.6.0",
+    "main": "src/index.ts",
+    "types": "lib/index.d.ts",
+    "license": "MIT",
+    "scripts": {
+        "fmt": "dprint fmt",
+        "test": "yarn build && jest",
+        "build": "tsc",
+        "prepare": "rm -rf ./lib/* && yarn test"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.14",
+        "dprint": "^0.22.0",
+        "jest": "^27.4.7",
+        "ts-node": "^10.4.0",
+        "typescript": "^4.5.5"
+    }
 }

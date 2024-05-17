@@ -10,23 +10,27 @@ type Platforms = "android" | "ios" | "all";
 type Configs = {
     type?: SemVer;
     semver?: string;
-    skipSemVerFor: Platforms[];
+    skipSemverFor: Platforms[];
     skipCodeFor: Platforms[];
+    versionFile?: string;
     root: string;
     pbxprojPath: () => string;
     buildGradlePath: () => string;
 };
 
-// -- FP
+// -- Helpers
 
 const split = (sep: string) => (str: string) => str.split(sep);
 
-const map = <T, R>(fn: (item: T) => R) => (list: T[]) => list.map(fn);
+const map =
+    <T, R>(fn: (item: T) => R) =>
+    (list: T[]) =>
+        list.map(fn);
 
-const pipe2 = <A1, A2, R>(
-    fn1: (arg: A1) => A2,
-    fn2: (arg: A2) => R,
-) => (arg: A1) => fn2(fn1(arg));
+const pipe2 =
+    <A1, A2, R>(fn1: (arg: A1) => A2, fn2: (arg: A2) => R) =>
+    (arg: A1) =>
+        fn2(fn1(arg));
 
 const replace = (expr: string | RegExp, replacement: string, str: string) => {
     return str.replace(expr, replacement);
@@ -42,12 +46,11 @@ const writeFile = (fPath: string, file: string) => {
     fs.writeFileSync(fPath, file, "utf8");
 };
 
-const matchFirst = (reg: RegExp) =>
-    (value: string) => {
-        const [, first] = ([] as string[]).concat(reg.exec(value)!);
+const matchFirst = (reg: RegExp) => (value: string) => {
+    const [, first] = ([] as string[]).concat(reg.exec(value)!);
 
-        return first;
-    };
+    return first;
+};
 
 const incrementSemVer = (current: string, type: SemVer | undefined) => {
     const [major, minor, patch] = parseSemVer(current);
@@ -98,14 +101,14 @@ class PBXManager extends BaseFileManager {
         const codeRegex = /CURRENT_PROJECT_VERSION = (\d+);/g;
         const currentCode = pipe2(
             matchFirst(codeRegex),
-            parseDecimal,
+            parseDecimal
         )(currentFile);
         const nextCode = currentCode + 1;
 
         this.content = replace(
             codeRegex,
             `CURRENT_PROJECT_VERSION = ${nextCode};`,
-            currentFile,
+            currentFile
         );
 
         return {
@@ -122,13 +125,25 @@ class PBXManager extends BaseFileManager {
         this.content = replace(
             versionRegex,
             `MARKETING_VERSION = ${nextVersion};`,
-            currentFile,
+            currentFile
         );
 
         return {
             current: currentVersion,
             next: nextVersion,
         };
+    }
+
+    getCurrentMarketingVersion() {
+        const currentFile = this.read();
+        const versionRegex = /MARKETING_VERSION = (.*);/g;
+        return matchFirst(versionRegex)(currentFile);
+    }
+
+    getCurrentProjectVersion() {
+        const currentFile = this.read();
+        const codeRegex = /CURRENT_PROJECT_VERSION = (\d+);/g;
+        return +matchFirst(codeRegex)(currentFile);
     }
 }
 
@@ -142,7 +157,9 @@ class BuildGradleManager extends BaseFileManager {
         const next = current + 1;
 
         if (isNaN(next)) {
-            throw new Error(`Invalid versionCode version parsed (${versionMatch})`);
+            throw new Error(
+                `Invalid versionCode version parsed (${versionMatch})`
+            );
         }
 
         this.content = currentFile.replace(codeExp, `versionCode ${next}`);
@@ -160,12 +177,22 @@ class BuildGradleManager extends BaseFileManager {
 
         this.content = currentFile.replace(
             nameExp,
-            // Here we try to prevent quotes style...
-            // which may be unnecessary, but who knows?
-            `versionName ${newVersionName}`,
+            `versionName ${newVersionName}`
         );
 
         return { current, next };
+    }
+
+    getVersionName() {
+        const currentFile = this.read()!;
+        const nameExp = /versionName ('.*'|".*")/;
+        return matchFirst(nameExp)(currentFile).replace(/['"]/g, "");
+    }
+
+    getVersionCode() {
+        const currentFile = this.read()!;
+        const codeExp = /versionCode (\d+)/;
+        return parseDecimal(matchFirst(codeExp)(currentFile));
     }
 }
 
@@ -181,9 +208,6 @@ class PackageJSONManager {
 
     private read() {
         if (this.content === null) {
-            // Avoid direct require as it caches
-            // resolved modules and changes to them
-            // are going to be persisted in the same process
             const raw = fs.readFileSync(require.resolve(this.basePath()), {
                 encoding: "utf8",
             });
@@ -197,7 +221,7 @@ class PackageJSONManager {
         if (this.content) {
             return writeFile(
                 this.basePath(),
-                JSON.stringify(this.content, null, 2),
+                JSON.stringify(this.content, null, 2)
             );
         }
     }
@@ -227,36 +251,31 @@ class ProjectFilesManager {
         this.buildGradle = new BuildGradleManager(buildGradlePath);
         this.pbx = new PBXManager(pbxprojPath);
         this.packageJSON = new PackageJSONManager(() =>
-            path.join(
-                root,
-                "package.json",
-            )
+            path.join(root, "package.json")
         );
     }
 
     syncSemver(semverString: string) {
-        const { skipSemVerFor } = this.configs;
+        const { skipSemverFor } = this.configs;
 
-        if (!skipSemVerFor.includes("ios")) {
-            const {
-                next: pbxNext,
-                current: pbxCurrent,
-            } = this.pbx.setMarketingVersion(semverString);
-            console.log(`iOS project.pbxproj version: ${pbxCurrent} -> ${pbxNext}`);
+        if (!skipSemverFor.includes("ios")) {
+            const { next: pbxNext, current: pbxCurrent } =
+                this.pbx.setMarketingVersion(semverString);
+            console.log(
+                `iOS project.pbxproj version: ${pbxCurrent} -> ${pbxNext}`
+            );
         }
 
-        if (!skipSemVerFor.includes("android")) {
-            const {
-                next: gradleNext,
-                current: gradleCurrent,
-            } = this.buildGradle.setVersionName(semverString);
-            console.log(`Android gradle.build version: ${gradleCurrent} -> ${gradleNext}`);
+        if (!skipSemverFor.includes("android")) {
+            const { next: gradleNext, current: gradleCurrent } =
+                this.buildGradle.setVersionName(semverString);
+            console.log(
+                `Android gradle.build version: ${gradleCurrent} -> ${gradleNext}`
+            );
         }
 
-        const {
-            next: packageNext,
-            current: packageCurrent,
-        } = this.packageJSON.setVersion(semverString);
+        const { next: packageNext, current: packageCurrent } =
+            this.packageJSON.setVersion(semverString);
         console.log(`package.json: ${packageCurrent} -> ${packageNext}`);
     }
 
@@ -264,27 +283,29 @@ class ProjectFilesManager {
         const { skipCodeFor } = this.configs;
 
         if (!skipCodeFor.includes("ios")) {
-            const {
-                next: pbxNext,
-                current: pbxCurrent,
-            } = this.pbx.bumpProjectVersion();
-            console.log(`iOS project.pbxproj code: ${pbxCurrent} -> ${pbxNext}`);
+            const { next: pbxNext, current: pbxCurrent } =
+                this.pbx.bumpProjectVersion();
+            console.log(
+                `iOS project.pbxproj code: ${pbxCurrent} -> ${pbxNext}`
+            );
         }
 
         if (!skipCodeFor.includes("android")) {
-            const {
-                next: gradleNext,
-                current: gradleCurrent,
-            } = this.buildGradle.bumpCode();
-            console.log(`Android build.gradle code: ${gradleCurrent} -> ${gradleNext}`);
+            const { next: gradleNext, current: gradleCurrent } =
+                this.buildGradle.bumpCode();
+            console.log(
+                `Android build.gradle code: ${gradleCurrent} -> ${gradleNext}`
+            );
         }
     }
 
     run() {
+        const { versionFile } = this.configs;
         this.dryRun();
         this.pbx.write();
         this.buildGradle.write();
         this.packageJSON.write();
+        versionFile && this.saveVersionFile(versionFile);
     }
 
     /**
@@ -293,7 +314,7 @@ class ProjectFilesManager {
      * This executes changes but don't actually write anything to fs
      */
     dryRun() {
-        const { type, semver, skipSemVerFor, skipCodeFor } = this.configs;
+        const { type, semver, skipSemverFor, skipCodeFor } = this.configs;
         const current = this.packageJSON.getVersion();
         const next = semver ?? incrementSemVer(current, type ?? "minor");
 
@@ -301,7 +322,7 @@ class ProjectFilesManager {
             this.bumpCodes();
         }
 
-        if (!skipSemVerFor.includes("all")) {
+        if (!skipSemverFor.includes("all")) {
             if (!type) {
                 throw new Error("SemVer type not specified");
             }
@@ -311,9 +332,26 @@ class ProjectFilesManager {
 
         return this;
     }
+
+    saveVersionFile(versionFile: string) {
+        const info = {
+            ios: {
+                versionName: this.pbx.getCurrentMarketingVersion(),
+                versionCode: this.pbx.getCurrentProjectVersion(),
+            },
+            android: {
+                versionName: this.buildGradle.getVersionName(),
+                versionCode: this.buildGradle.getVersionCode(),
+            },
+        };
+
+        const filePath = path.join(this.configs.root, versionFile);
+        writeFile(filePath, JSON.stringify(info, null, 2));
+
+        console.log(`Version file saved at: ${filePath}`);
+    }
 }
 
-// if you want a simple version to use as api
 export const apiVersioner = (configs: Configs) => {
     return new ProjectFilesManager(configs);
 };
@@ -338,20 +376,20 @@ export const versioner = (
     cliArgs: {
         skipCodeFor?: string;
         skipSemverFor?: string;
+        versionFile?: string;
         semver?: string;
         type?: string;
-    },
+    }
 ) => {
     if (cliArgs.skipCodeFor === "all" && cliArgs.skipSemverFor === "all") {
-        // https://i.kym-cdn.com/photos/images/newsfeed/001/240/075/90f.png
-        console.log("My work here is done.");
+        console.log("Skipped version update");
         return;
     }
 
     const required = <T>(value: T, name: string): NonNullable<T> => {
         if (!value) {
             throw new Error(
-                `Value for ${name} is '${value}', maybe RN cli broke compatibility?`,
+                `Value for ${name} is '${value}', maybe RN cli broke compatibility?`
             );
         }
 
@@ -361,34 +399,43 @@ export const versioner = (
     return apiVersioner({
         root: required(cliConfigs.root, "root"),
         pbxprojPath: () => {
-            const iosProject = required(cliConfigs?.project?.ios, "project.ios");
+            const iosProject = required(
+                cliConfigs?.project?.ios,
+                "project.ios"
+            );
 
-            return iosProject.pbxprojPath || path.join(
-                required(iosProject.sourceDir, "project.ios.sourceDir"),
-                required(iosProject.xcodeProject, "project.ios.xcodeProject")
-                    .name
-                    .replace(".xcworkspace", ".xcodeproj"),
-                "project.pbxproj",
+            return (
+                iosProject.pbxprojPath ||
+                path.join(
+                    required(iosProject.sourceDir, "project.ios.sourceDir"),
+                    required(
+                        iosProject.xcodeProject,
+                        "project.ios.xcodeProject"
+                    ).name.replace(".xcworkspace", ".xcodeproj"),
+                    "project.pbxproj"
+                )
             );
         },
         buildGradlePath: () => {
-            const androidProject = required(cliConfigs?.project?.android, "project.android");
+            const androidProject = required(
+                cliConfigs?.project?.android,
+                "project.android"
+            );
 
             return path.join(
                 required(androidProject.sourceDir, "project.android.sourceDir"),
                 required(androidProject.appName, "project.android.appName"),
-                "build.gradle",
+                "build.gradle"
             );
         },
-        // code validates these casts, we cast to make api above allow only valid values
-        // for type checked usages
         type: cliArgs.type as SemVer,
         semver: cliArgs.semver,
+        versionFile: cliArgs.versionFile,
         skipCodeFor: cliArgs.skipCodeFor
-            ? cliArgs.skipCodeFor.split(" ") as Platforms[]
+            ? (cliArgs.skipCodeFor.split(" ") as Platforms[])
             : [],
-        skipSemVerFor: cliArgs.skipSemverFor
-            ? cliArgs.skipSemverFor.split(" ") as Platforms[]
+        skipSemverFor: cliArgs.skipSemverFor
+            ? (cliArgs.skipSemverFor.split(" ") as Platforms[])
             : [],
     });
 };

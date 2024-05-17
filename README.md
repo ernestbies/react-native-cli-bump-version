@@ -1,12 +1,12 @@
 # react-native-cli-bump-version
 
-A **simple** react-native cli plugin to bump versions at platform files
+A **simple** react-native cli plugin to bump versions at platform files.
 
 ## Install
 
-`npm i --save-dev react-native-cli-bump-version`
+`npm i --save-dev @ernestbies/react-native-cli-bump-version`
 
-`yarn add -D react-native-cli-bump-version`
+`yarn add -D @ernestbies/react-native-cli-bump-version`
 
 ## Usage
 
@@ -14,20 +14,24 @@ Since this is a react-native cli plugin, after adding it to the project
 you can call:
 
 ```shell script
-npx react-native bump-version --type patch
+npx react-native bump-version --type patch --version-file version.json
 ```
+
 That should produce this:
+
 ```shell script
 iOS project.pbxproj code: 24 -> 25
 Android build.gradle code: 23 -> 24
 iOS project.pbxproj version: 1.10.6 -> 1.10.7
 Android gradle.build version: 1.10.6 -> 1.10.7
 package.json: 1.10.6 -> 1.10.7
+Version file saved at: dir/version.json
 ```
 
 The plugin updates and write the output listed files, and it's up to you to
 commit them.
 
+If you use the `--version-file fileName` flag, the versionName and versionCode for Android and iOS will be saved into the specified file.
 
 Tip: I usually create a script entry for the command, since it tends to be long:
 
@@ -41,7 +45,6 @@ Tip: I usually create a script entry for the command, since it tends to be long:
 
 That way you can invoke it like: `yarn bump --type patch`
 
-
 ## Flags
 
 Just ask for help:
@@ -50,16 +53,18 @@ Just ask for help:
 npx react-native bump-version --help
 
 Options:
-  --type [major|minor|patch]           SemVer release type, optional if --skip-semver-for all is passed
-  --skip-semver-for [android|ios|all]  Skips bump SemVer for specified platform
-  --skip-code-for [android|ios|all]    Skips bump version codes for specified platform
-  --semver                             Pass release version if known. Overwrites calculated SemVer. Optional.
-  -h, --help                           output usage information
+  --type [major|minor|patch]           SemVer release type, optional if --skip-semver-for all is passed.
+  --semver [String]                    Pass release version if known. Overwrites calculated SemVer. Optional.
+  --skip-semver-for [android|ios|all]  Skips bump SemVer for specified platform.
+  --skip-code-for [android|ios|all]    Skips bump version codes for specified platform.
+  --version-file [String]              Specifies the filename to save version information. Optional.
+  -h, --help                           display help for command
 ```
 
 ### Recommendations
 
 #### Use gradle for SemVer sync
+
 Android can handle automatically semantic version sync with `package.json`:
 
 ```groovy
@@ -102,8 +107,6 @@ the `Info.plist` file has `MARKETING_VERSION` instead of SemVer string:
 
 ### Mention
 
-I tried to find a tool that did this before starting it:
- 
- * [rnbv](https://github.com/llotheo/react-native-bump-version) inspired my initial sources
- * [react-native-version](https://github.com/stovmascript/react-native-version) actually does what I was
- looking for, but I already had written the tool, so I just published it anyway. 
+This is extended library with additional features based on:
+
+-   [react-native-cli-bump-version](https://github.com/Grohden/react-native-cli-bump-version)
